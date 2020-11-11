@@ -178,7 +178,7 @@ int main () {
     }
 
 
-    std:: string filout = filin + "median_model.txt";
+    std:: string filout = filin + "_median_model.txt";
     std:: ofstream ofilout(filout.c_str());            
     
     // halo mass, redshift and concentration
