@@ -8,7 +8,55 @@
 #include "../FitDeltaSigma/nfwLens.h"
 #include "TaperedCovarianceMatrix.h"
 
+template <class T>
+int locate (const std::vector<T> &v, const T x){
+  size_t n = v.size ();
+  int jl = -1;
+  int ju = n;
+  bool as = (v[n-1] >= v[0]);
+  while (ju-jl > 1){
+    int jm = (ju+jl)/2;
+    if ((x >= v[jm]) == as)
+      jl=jm;
+    else
+      ju=jm;
+  }
+  if (x == v[0])
+    return 0;
+  else if (x == v[n-1])
+    return n-2;
+  else
+    return jl;
+}
+
+double getY(std:: vector<double> x, std:: vector<double> y,double xi){
+  int nn = x.size();                                                               
+  if(x[0]<x[nn-1]){                                                                                     
+    if(xi>x[nn-1]) return y[nn-1];
+    if(xi<x[0]) return y[0];
+  }      
+  else{                                                                                                            
+    if(xi<x[nn-1]) return y[nn-1];
+    if(xi>x[0]) return y[0];        
+  }                                    
+  int i = locate (x,xi);           
+  i = std::min (std::max (i,0), int (nn)-2);
+  double f=(xi-x[i])/(x[i+1]-x[i]);
+  if(i>1 && i<nn-2){
+    double a0,a1,a2,a3,f2;                                                       
+    f2 = f*f;                                                    
+    a0 = y[i+2] - y[i+1] - y[i-1] + y[i];            
+    a1 = y[i-1] - y[i] - a0;                                                                              
+    a2 = y[i+1] - y[i-1];                                                              
+    a3 = y[i];                                                                                     
+    return a0*f*f2+a1*f2+a2*f+a3;                                                    
+  }                                                                      
+  else return f*y[i+1]+(1-f)*y[i];           
+}
+
 using namespace std;
+
+std:: vector<double> lrr, D2h;
 
 // these two variables contain the name of the CosmoBolognaLib
 // directory and the name of the current directory (useful when
@@ -69,6 +117,26 @@ int main () {
     std:: cin >> filin;
     double zl;
     std:: cin >> zl;
+    
+    // soon after it checks if there is a tabulated file for the 2halo term
+    std:: ostringstream osz;
+    osz << zl;    
+    std:: string sz;
+    sz = osz.str();
+    std:: string filin_table = "table_2h_model_z=" + sz + ".txt";
+    std:: ifstream ifilin_table;
+    ifilin_table.open(filin_table.c_str());
+    if(ifilin_table.is_open()){
+      std:: cout << " table file for the 2halo term  exists: " << filin_table << std:: endl;
+      std:: cout << " I read it!!! " << std:: endl;
+      double ri, Di2h;
+      while(ifilin_table >> ri >> Di2h){
+	lrr.push_back(log10(ri));
+	D2h.push_back(Di2h);	      
+      }
+      std:: cout << " the file containts " << lrr.size() << " lines " << std:: endl;
+    }		
+    
     std:: ifstream ifilin;
     
     double med_lm200, q18_lm200, q82_lm200;
@@ -249,13 +317,27 @@ int main () {
 	std:: cout << fileprof << " does not exist ... check this out!!! " << std:: endl;
 	exit(1);
       }
-      int step = radius.size();      
-      for(int i=0;i<step;i++){
-	ofilout << radius[i] << "   " 
-		<< lens.deltasigma_1h(radius[i]) << "  " 	  
-		<< lens0.deltasigma_1h(radius[i]) << "  " 
-		<< lens1.deltasigma_1h(radius[i]) 
-		<< std:: endl;
+      int step = radius.size();
+      if(lrr.size()>0){
+	double halo_bias = cosmology.bias_halo(m200,redshift,"Tinker","EisensteinHu");    	
+	double halo_bias0 = cosmology.bias_halo(pow(10.,med_lm200-q18_lm200),redshift,"Tinker","EisensteinHu");
+	double halo_bias1 = cosmology.bias_halo(pow(10.,med_lm200+q82_lm200),redshift,"Tinker","EisensteinHu");    	
+	for(int i=0;i<step;i++){
+	  double D2hi = getY(lrr,D2h,log10(radius[i]));	  
+	  ofilout << radius[i] << "   "
+		  << lens.deltasigma_1h(radius[i])+halo_bias*D2hi << "  " 	  
+		  << lens0.deltasigma_1h(radius[i])+halo_bias0*D2hi << "  " 
+		  << lens1.deltasigma_1h(radius[i])+halo_bias1*D2hi
+		  << std:: endl;
+	}
+      }else{
+	for(int i=0;i<step;i++){
+	  ofilout << radius[i] << "   " 
+		  << lens.deltasigma_1h(radius[i]) << "  " 	  
+		  << lens0.deltasigma_1h(radius[i]) << "  " 
+		  << lens1.deltasigma_1h(radius[i]) 
+		  << std:: endl;
+	}
       }
       ofilout.close();
     }
