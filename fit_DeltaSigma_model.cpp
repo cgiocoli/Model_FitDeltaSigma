@@ -71,7 +71,7 @@ string cbl::par::DirCosmo = DIRCOSMO, cbl::par::DirLoc = DIRL;
 // std:: string tt;
 const double tiny =1e-4;
 
-const double min_ngal_in_bin = 10;
+double min_ngal_in_bin;// = 10;
 const double rmin = 0.01;
 
 int main () {
@@ -117,7 +117,10 @@ int main () {
     std:: cin >> filin;
     double zl;
     std:: cin >> zl;
-    
+    double rt;
+    std:: cin >> rt;
+    // standard is 10.0
+    std:: cin >> min_ngal_in_bin;
     // soon after it checks if there is a tabulated file for the 2halo term
     std:: ostringstream osz;
     osz << zl;    
@@ -245,7 +248,6 @@ int main () {
       }
     }
 
-
     std:: string filout = filin + "_median_model.txt";
     std:: ofstream ofilout(filout.c_str());            
     
@@ -266,11 +268,11 @@ int main () {
     int step = 128;
     
     std:: cout << redshift << "  " << m200 << "  " << c200 << std:: endl;
-    nfwLens lens (&cosmology, redshift, m200, c200, 3.0, med_f_off, med_sigma_off, true);
+    nfwLens lens (&cosmology, redshift, m200, c200, rt, med_f_off, med_sigma_off, true);
     if(numLines==6) cosmology.set_Omega(med_omega_m - q18_omega_m);    
-    nfwLens lens0(&cosmology, redshift, pow(10.,med_lm200-q18_lm200), med_c200-q18_c200, 3.0, med_f_off-q18_f_off, med_sigma_off-q18_sigma_off, true);
+    nfwLens lens0(&cosmology, redshift, pow(10.,med_lm200-q18_lm200), med_c200-q18_c200, rt, med_f_off-q18_f_off, med_sigma_off-q18_sigma_off, true);
     if(numLines==6) cosmology.set_Omega(med_omega_m + q82_omega_m);        
-    nfwLens lens1(&cosmology, redshift, pow(10.,med_lm200+q82_lm200), med_c200+q82_c200, 3.0, med_f_off+q82_f_off, med_sigma_off+q82_sigma_off, true);
+    nfwLens lens1(&cosmology, redshift, pow(10.,med_lm200+q82_lm200), med_c200+q82_c200, rt, med_f_off+q82_f_off, med_sigma_off+q82_sigma_off, true);
     
     std:: cout << " running " << std:: endl;
     
